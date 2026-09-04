@@ -16,3 +16,8 @@ venv/
 env/
 ENV/
 .venv/
+
+# Generated Output Artifacts
+kmeans_pipeline.pkl
+wholesale_preprocessed.csv
+*.png
