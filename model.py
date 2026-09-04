@@ -568,18 +568,19 @@ class MiniBatchKMeans:
             batch_inertia = float(np.sum(np.min(dist_sq_b, axis=1)))
             convergence_hist.append(batch_inertia)
 
-            # Tinh full dataset inertia de theo doi best_centers va Early Stopping chinh xac (tranh nhieu mini-batch)
-            full_labels = self._assign(X, centers)
-            full_inertia = self._compute_inertia(X, centers, full_labels)
+            # Đánh giá full_inertia mỗi 5 bước hoặc ở bước cuối cùng để tối ưu tốc độ và lọc nhiễu batch
+            if (actual_iter % 5 == 0) or (_ == self.max_iter - 1):
+                full_labels = self._assign(X, centers)
+                full_inertia = self._compute_inertia(X, centers, full_labels)
 
-            if full_inertia < best_inertia - self.tol:
-                best_inertia = full_inertia
-                best_centers = centers.copy()
-                no_improve = 0
-            else:
-                no_improve += 1
-                if no_improve >= self.max_no_improvement:
-                    break
+                if full_inertia < best_inertia - self.tol:
+                    best_inertia = full_inertia
+                    best_centers = centers.copy()
+                    no_improve = 0
+                else:
+                    no_improve += 1
+                    if no_improve >= self.max_no_improvement:
+                        break
 
         # Nhan cuoi: gan toan bo X vao tam tot nhat
         final_labels = self._assign(X, best_centers)

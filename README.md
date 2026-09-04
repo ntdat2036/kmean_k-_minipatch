@@ -15,15 +15,17 @@ Dự án thực hiện phân khúc 440 khách hàng của nhà phân phối bán
 - `Delicassen` (Thực phẩm cao cấp)
 
 ### Các thành tựu chính:
-1. **Tiền xử lý & Feature Engineering**: Biến đổi Logarithm (`log1p`), tính tỷ lệ tươi sống (`Fresh_Ratio`), tỷ lệ hàng không thiết yếu (`NonEssential_Ratio`), tỷ lệ tạp hóa/sữa (`Grocery_Milk_Ratio`) và tổng chi tiêu (`Total_Spend`).
-2. **K-Means Clustering (NumPy)**: Tự cài đặt thuật toán K-Means với khởi tạo K-Means++, chạy đa khởi tạo (`n_init`), tính WCSS (Inertia) và gán cụm.
-3. **Bộ chỉ số đánh giá đa chiều**:
-   - **Elbow Method (Inertia / WCSS)**
-   - **Silhouette Score**
-   - **Calinski-Harabász Index (CHI)**
-   - **Davies-Bouldin Index (DBI)**
-4. **Trực quan hóa PCA 2D**: Tự cài đặt thuật toán PCA bằng phân tích SVD để chiếu không gian cao chiều về 2D.
-5. **Đóng gói Pipeline & Inference**: Đóng gói `StandardScaler` + `KMeans` thành `Pipeline` để thực hiện suy luận trên dữ liệu mới (`predict_new.py`).
+1. **Tiền xử lý & Feature Engineering (`preprocess.py`)**: Đã xây dựng module tập trung `build_features` thực hiện biến đổi Logarithm (`log1p`) cho 6 ngành hàng gốc và 3 tỷ lệ chi tiêu (`Fresh_Ratio_log`, `NonEssential_Ratio_log`, `Grocery_Milk_Ratio_log`), bảo đảm 100% đồng bộ giữa train (`main.py`) và inference (`predict_new.py`).
+2. **So sánh 3 biến thể K-Means (Lloyd -> K-Means++ -> Mini-Batch K-Means)**:
+   - **K-Means (Lloyd)**: Thuật toán phân cụm cơ bản khởi tạo ngẫu nhiên.
+   - **K-Means++**: Khởi tạo trọng số khoảng cách $D^2$ khắc phục nhạy cảm vị trí tâm ban đầu.
+   - **Mini-Batch K-Means**: Cập nhật online theo lô nhỏ tối ưu tốc độ và bộ nhớ cho dữ liệu lớn.
+   - So sánh thực nghiệm 3 phương pháp K-Means qua các cải tiến kỹ thuật, đánh giá bằng Silhouette/CHI/DBI trên cùng một bộ dữ liệu đã chuẩn hóa.
+3. **Bộ chỉ số đánh giá đa chiều & Dynamic Selection**:
+   - **Elbow Method & Silhouette Curve ($K = 2 \rightarrow 8$)**
+   - **Composite Metric Ranking** tự động chọn mô hình xuất sắc nhất.
+4. **Trực quan hóa PCA 2D**: Tự cài đặt thuật toán PCA bằng phân tích SVD với Sign Determinism để chiếu không gian 9D về 2D cố định trục.
+5. **Đóng gói Pipeline & Dynamic Profiling**: Đóng gói `StandardScaler` + `KMeans` thành `Pipeline` và tự động ánh xạ nhãn cụm dựa trên chi tiêu thực tế (`predict_new.py`).
 
 ---
 
@@ -32,13 +34,13 @@ Dự án thực hiện phân khúc 440 khách hàng của nhà phân phối bán
 ```text
 Kmeans/
 ├── Wholesale customers data.csv     # Dữ liệu gốc (440 dòng x 8 cột)
-├── wholesale_preprocessed.csv        # Dữ liệu đã xử lý kèm cột 'Cluster' làm cột cuối
 ├── Wholesale_Customers_KMeans.ipynb  # Jupyter Notebook báo cáo phân tích toàn diện
-├── model.py                          # Định nghĩa các mô hình & thuật toán (StandardScaler, KMeans, PCA, Metrics, Pipeline)
-├── main.py                           # Script thực thi chính (Huấn luyện, đánh giá & xuất mô hình)
-├── predict_new.py                    # Script dự đoán phân cụm cho khách hàng mới
-├── test_kmeans_pipeline.py           # Bộ kiểm thử tự động (pytest)
-├── requirements.txt                  # Khai báo phụ thuộc (pandas, numpy, matplotlib, seaborn, pytest)
+├── preprocess.py                     # Module tiền xử lý & Feature Engineering dùng chung duy nhất
+├── model.py                          # Định nghĩa các mô hình & thuật toán (StandardScaler, KMeans, KMeansPlusPlus, MiniBatchKMeans, PCA, Metrics, Pipeline)
+├── main.py                           # Script thực thi chính (Huấn luyện, so sánh 3 thuật toán & xuất mô hình)
+├── predict_new.py                    # Script suy luận dự đoán phân cụm cho khách hàng mới
+├── test_kmeans_pipeline.py           # Bộ kiểm thử tự động (pytest pass 100%)
+├── requirements.txt                  # Khai báo phụ thuộc có pin version (pandas, numpy, matplotlib, pytest)
 └── README.md                         # Báo cáo & tài liệu hướng dẫn
 ```
 

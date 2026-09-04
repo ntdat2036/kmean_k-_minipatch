@@ -19,10 +19,9 @@ from model import (
     calinski_harabasz_score,
     davies_bouldin_score,
     Pipeline,
-    preprocess_features,
-    validate_input_data,
     map_cluster_profiles
 )
+from preprocess import build_features, validate_input_data, FEATURE_COLS
 
 DATA_PATH = 'Wholesale customers data.csv'
 MODEL_PATH = 'kmeans_pipeline.pkl'
@@ -72,18 +71,18 @@ def test_all_kmeans_variants():
 def test_shared_preprocessing_and_validation():
     """Kiểm tra tiền xử lý tập trung và bắt lỗi dữ liệu vào không hợp lệ"""
     df = pd.read_csv(DATA_PATH)
-    df_feat = preprocess_features(df)
+    df_feat = build_features(df)
     assert df_feat.shape == (440, 9)
 
     # Test missing columns
     with pytest.raises(ValueError):
-        preprocess_features(df.drop(columns=['Fresh']))
+        build_features(df.drop(columns=['Fresh']))
 
     # Test negative values
     df_bad = df.copy()
     df_bad.loc[0, 'Fresh'] = -100
     with pytest.raises(ValueError):
-        preprocess_features(df_bad)
+        build_features(df_bad)
 
 
 def test_dynamic_cluster_profiling():
@@ -123,7 +122,7 @@ def test_metrics():
 def test_pipeline_and_inference():
     """Kiểm tra Pipeline và quy trình suy luận dự đoán"""
     df = pd.read_csv(DATA_PATH)
-    X = preprocess_features(df)
+    X = build_features(df)
 
     pipeline = Pipeline([
         ('scaler', StandardScaler()),

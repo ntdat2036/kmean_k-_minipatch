@@ -27,19 +27,19 @@ from model import (
     calinski_harabasz_score,
     davies_bouldin_score,
     Pipeline,
-    preprocess_features,
     map_cluster_profiles
 )
+from preprocess import build_features, FEATURE_COLS
 
 CLUSTER_COLORS = ["#E74C3C", "#2ECC71", "#3498DB"]
 
 
 def load_and_preprocess_data(data_path):
-    """Nap du lieu va tao dac trung dung chung preprocess_features tu model.py."""
+    """Nap du lieu va tao dac trung dung chung build_features tu preprocess.py."""
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Khong tim thay file: {data_path}")
     df_raw = pd.read_csv(data_path)
-    df_features = preprocess_features(df_raw)
+    df_features = build_features(df_raw)
     feature_cols = list(df_features.columns)
     return df_raw, df_features, feature_cols
 

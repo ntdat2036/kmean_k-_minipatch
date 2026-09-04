@@ -13,9 +13,9 @@ from model import (
     StandardScaler,
     KMeans,
     Pipeline,
-    preprocess_features,
     map_cluster_profiles
 )
+from preprocess import build_features, FEATURE_COLS
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -46,10 +46,10 @@ def main():
     ])
 
     print("\n--- 3 Khách hàng thử nghiệm ---")
-    print(sample_customers[['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']])
+    print(sample_customers[FEATURE_COLS])
 
     # Tiền xử lý tập trung (100% đồng bộ với main.py)
-    X_new = preprocess_features(sample_customers)
+    X_new = build_features(sample_customers)
     predictions = pipeline.predict(X_new)
     sample_customers['Cluster'] = predictions
 
