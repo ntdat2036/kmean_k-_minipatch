@@ -25,23 +25,23 @@ def preprocess_new_data(df):
     """
     Thực hiện Feature Engineering đồng bộ với main.py:
     1. Biến đổi log1p cho 6 nhóm chi tiêu: Fresh_log, Milk_log, ...
-    2. Tạo các tỷ lệ: Fresh_Ratio, NonEssential_Ratio, Grocery_Milk_Ratio
+    2. Biến đổi log1p cho các tỷ lệ: Fresh_Ratio_log, NonEssential_Ratio_log, Grocery_Milk_Ratio_log
     """
     df_proc = df.copy()
     feature_cols = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']
     
-    # 1. Log1p
+    # 1. Log1p cho 6 nhóm chi tiêu
     for col in feature_cols:
         df_proc[f'{col}_log'] = np.log1p(df_proc[col])
         
-    # 2. Ratios
+    # 2. Log1p cho các tỷ lệ
     total_spend = df_proc[feature_cols].sum(axis=1)
-    df_proc['Fresh_Ratio'] = df_proc['Fresh'] / (total_spend + 1e-6)
-    df_proc['NonEssential_Ratio'] = (df_proc['Grocery'] + df_proc['Detergents_Paper']) / (total_spend + 1e-6)
-    df_proc['Grocery_Milk_Ratio'] = df_proc['Grocery'] / (df_proc['Milk'] + 1e-6)
+    df_proc['Fresh_Ratio_log']        = np.log1p(df_proc['Fresh'] / (total_spend + 1e-6))
+    df_proc['NonEssential_Ratio_log'] = np.log1p((df_proc['Grocery'] + df_proc['Detergents_Paper']) / (total_spend + 1e-6))
+    df_proc['Grocery_Milk_Ratio_log'] = np.log1p(df_proc['Grocery'] / (df_proc['Milk'] + 1e-6))
     
     training_cols = [f'{col}_log' for col in feature_cols] + [
-        'Fresh_Ratio', 'NonEssential_Ratio', 'Grocery_Milk_Ratio'
+        'Fresh_Ratio_log', 'NonEssential_Ratio_log', 'Grocery_Milk_Ratio_log'
     ]
     return df_proc[training_cols]
 

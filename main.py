@@ -33,7 +33,7 @@ CLUSTER_COLORS = ["#E74C3C", "#2ECC71", "#3498DB"]
 
 
 def load_and_preprocess_data(data_path):
-    """Nap du lieu va tao dac trung."""
+    """Nap du lieu va tao dac trung (dung log1p cho ca ratio de giam skewness/outliers)."""
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Khong tim thay file: {data_path}")
     df_raw = pd.read_csv(data_path)
@@ -42,11 +42,14 @@ def load_and_preprocess_data(data_path):
     for col in feature_cols:
         df[f"{col}_log"] = np.log1p(df[col])
     df["Total_Spend"] = df[feature_cols].sum(axis=1)
-    df["Fresh_Ratio"]        = df["Fresh"] / (df["Total_Spend"] + 1e-6)
-    df["NonEssential_Ratio"] = (df["Grocery"] + df["Detergents_Paper"]) / (df["Total_Spend"] + 1e-6)
-    df["Grocery_Milk_Ratio"] = df["Grocery"] / (df["Milk"] + 1e-6)
+
+    # Log1p tren cac ty le chi tieu de tranh phinh to Z-score do outliers
+    df["Fresh_Ratio_log"]        = np.log1p(df["Fresh"] / (df["Total_Spend"] + 1e-6))
+    df["NonEssential_Ratio_log"] = np.log1p((df["Grocery"] + df["Detergents_Paper"]) / (df["Total_Spend"] + 1e-6))
+    df["Grocery_Milk_Ratio_log"] = np.log1p(df["Grocery"] / (df["Milk"] + 1e-6))
+
     training_cols = [f"{col}_log" for col in feature_cols] + [
-        "Fresh_Ratio", "NonEssential_Ratio", "Grocery_Milk_Ratio"
+        "Fresh_Ratio_log", "NonEssential_Ratio_log", "Grocery_Milk_Ratio_log"
     ]
     return df_raw, df, training_cols
 
@@ -62,7 +65,7 @@ def evaluate_clustering(X_scaled, labels):
 
 def compare_algorithms(X_scaled):
     """
-    Huan luyen va so sanh 3 thuat toan phan cum tren cung du lieu.
+    Huan luyen va so sanh 3 thuat toan phan cum tren cung du lieu (n_init=10 dong nhat).
 
     Chuoi cai tien:
       KMeans (random) -> KMeansPlusPlus (D^2 init) -> MiniBatchKMeans (online)
@@ -72,16 +75,16 @@ def compare_algorithms(X_scaled):
             n_clusters=3, n_init=10, random_state=42
         ),
         "KMeans++ (D^2+Oversampling)": KMeansPlusPlus(
-            n_clusters=3, n_init=5, random_state=42, oversample_factor=3
+            n_clusters=3, n_init=10, random_state=42, oversample_factor=3
         ),
         "MiniBatchKMeans (Online)": MiniBatchKMeans(
-            n_clusters=3, n_init=3, random_state=42,
+            n_clusters=3, n_init=10, random_state=42,
             batch_size=100, max_no_improvement=15
         ),
     }
     results = {}
     for name, model in algorithms.items():
-        print(f"    Dang chay: {name}...")
+        print(f"    Dang chay: {name} (n_init=10)...")
         t0 = time.perf_counter()
         labels = model.fit_predict(X_scaled)
         elapsed = time.perf_counter() - t0
@@ -96,11 +99,36 @@ def compare_algorithms(X_scaled):
     return results
 
 
+def select_best_algorithm(results):
+    """
+    Tu dong chon thuat toan tot nhat dua tren Composite Metric Score:
+    Score = Norm(Silhouette) + Norm(CHI) + Norm(1 - DBI)
+    """
+    names = list(results.keys())
+    sil = np.array([results[k]["silhouette"] for k in names])
+    chi = np.array([results[k]["calinski"] for k in names])
+    dbi = np.array([results[k]["davies"] for k in names])
+
+    def min_max_norm(arr, higher_is_better=True):
+        rng = np.ptp(arr)
+        if rng == 0:
+            return np.ones_like(arr)
+        if higher_is_better:
+            return (arr - np.min(arr)) / rng
+        else:
+            return (np.max(arr) - arr) / rng
+
+    scores = min_max_norm(sil, True) + min_max_norm(chi, True) + min_max_norm(dbi, False)
+    best_idx = int(np.argmax(scores))
+    best_name = names[best_idx]
+    return best_name, {name: float(s) for name, s in zip(names, scores)}
+
+
 def print_comparison_table(results):
     """In bang so sanh ket qua 3 thuat toan."""
     sep = "=" * 88
     print("\n" + sep)
-    print("  BANG SO SANH 3 THUAT TOAN PHAN CUM (K = 3)")
+    print("  BANG SO SANH 3 THUAT TOAN PHAN CUM (K = 3, n_init = 10)")
     print(sep)
     header = f"  {'Thuat toan':<30} {'T.gian(s)':>10} {'Inertia':>12} {'Silhouette':>12} {'CHI':>10} {'DBI':>10}"
     print(header)
@@ -198,8 +226,13 @@ def run_pipeline():
     plot_pca_comparison(X_scaled, results)
     plot_convergence(results)
 
-    print("\n[6/6] Luu ket qua (dung KMeans++ lam mo hinh chinh)...")
-    best_key = "KMeans++ (D^2+Oversampling)"
+    print("\n[6/6] Tu dong chon mo hinh tot nhat (Dynamic Model Selection)...")
+    best_key, composite_scores = select_best_algorithm(results)
+    print(f"  Diem Composite Metrics (Silhouette + CHI + DBI):")
+    for k, sc in composite_scores.items():
+        print(f"    - {k:<30}: {sc:.4f}")
+    print(f"  ==> Mo hinh duoc chon: '{best_key}'")
+
     best_labels = results[best_key]["labels"]
 
     df_export = df_raw.copy()

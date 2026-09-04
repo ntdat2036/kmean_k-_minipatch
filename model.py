@@ -291,17 +291,29 @@ class KMeansPlusPlus:
         n_samples, n_features = X.shape
         centers = np.empty((self.n_clusters, n_features), dtype=np.float64)
 
+        selected_indices = set()
         first_idx = rng.randint(0, n_samples)
+        selected_indices.add(first_idx)
         centers[0] = X[first_idx]
         dist_sq = np.sum((X - centers[0]) ** 2, axis=1)
 
         for k in range(1, self.n_clusters):
-            sum_dist = np.sum(dist_sq)
-            probs = dist_sq / sum_dist if sum_dist > 0.0 else np.ones(n_samples) / n_samples
+            probs = dist_sq.copy()
+            for s_idx in selected_indices:
+                probs[s_idx] = 0.0
+            sum_dist = np.sum(probs)
+            if sum_dist > 0.0:
+                probs /= sum_dist
+            else:
+                probs = np.ones(n_samples, dtype=np.float64)
+                for s_idx in selected_indices:
+                    probs[s_idx] = 0.0
+                probs /= (np.sum(probs) + 1e-12)
+
             cumprobs = np.cumsum(probs)
 
-            # Oversampling: chon l ung vien
-            l = min(n_samples, max(1, self.oversample_factor))
+            # Oversampling: chon l ung vien khong trung voi tam da chon
+            l = min(n_samples - len(selected_indices), max(1, self.oversample_factor))
             candidate_idxs = []
             for _ in range(l):
                 r = rng.rand()
@@ -319,6 +331,7 @@ class KMeansPlusPlus:
                     best_phi = phi_c
                     best_idx = cidx
 
+            selected_indices.add(best_idx)
             centers[k] = X[best_idx]
             if k < self.n_clusters - 1:
                 new_d = np.sum((X - centers[k]) ** 2, axis=1)
@@ -425,7 +438,8 @@ class MiniBatchKMeans:
     4. Inertia tren batch:
             J_batch = sum_{x_i in B_t} min_k || x_i - mu_k ||^2
 
-    Dung som: neu J_batch khong giam qua tol trong max_no_improvement buoc -> stop.
+    Dung som & Tracking best_centers: Dùng full_inertia trên toàn bộ dữ liệu X
+    tránh nhiễu do mini-batch ngẫu nhiên.
     Nhan cuoi: gan toan bo X vao tam gan nhat sau toi uu.
 
     Tham số (Hyperparameters):
@@ -465,22 +479,35 @@ class MiniBatchKMeans:
 
     def _kmeans_pp_init(self, X, rng):
         """
-        Khởi tạo K-Means++ D^2-weighted:
+        Khởi tạo K-Means++ D^2-weighted (loại trừ trùng lặp ứng viên):
             P(x_i) = D(x_i)^2 / sum_j D(x_j)^2
         """
         n_samples, n_features = X.shape
         centers = np.empty((self.n_clusters, n_features), dtype=np.float64)
 
+        selected_indices = set()
         first_idx = rng.randint(0, n_samples)
+        selected_indices.add(first_idx)
         centers[0] = X[first_idx]
         dist_sq = np.sum((X - centers[0]) ** 2, axis=1)
 
         for k in range(1, self.n_clusters):
-            sum_dist = np.sum(dist_sq)
-            probs = dist_sq / sum_dist if sum_dist > 0.0 else np.ones(n_samples) / n_samples
+            probs = dist_sq.copy()
+            for s_idx in selected_indices:
+                probs[s_idx] = 0.0
+            sum_dist = np.sum(probs)
+            if sum_dist > 0.0:
+                probs /= sum_dist
+            else:
+                probs = np.ones(n_samples, dtype=np.float64)
+                for s_idx in selected_indices:
+                    probs[s_idx] = 0.0
+                probs /= (np.sum(probs) + 1e-12)
+
             cumprobs = np.cumsum(probs)
             r = rng.rand()
             next_idx = min(np.searchsorted(cumprobs, r), n_samples - 1)
+            selected_indices.add(next_idx)
             centers[k] = X[next_idx]
             if k < self.n_clusters - 1:
                 new_d = np.sum((X - centers[k]) ** 2, axis=1)
@@ -534,15 +561,18 @@ class MiniBatchKMeans:
                 eta_k = 1.0 / n_k[k]   # learning rate: eta_k = 1/n_k
                 centers[k] = (1.0 - eta_k) * centers[k] + eta_k * X_batch[i]
 
-            # Buoc 4: Tinh inertia tren mini-batch
+            # Buoc 4: Tinh inertia tren mini-batch de ve do thi
             diff_b = X_batch[:, np.newaxis, :] - centers[np.newaxis, :, :]
             dist_sq_b = np.sum(diff_b ** 2, axis=2)
             batch_inertia = float(np.sum(np.min(dist_sq_b, axis=1)))
             convergence_hist.append(batch_inertia)
 
-            # Early stopping
-            if batch_inertia < best_inertia - self.tol:
-                best_inertia = batch_inertia
+            # Tinh full dataset inertia de theo doi best_centers va Early Stopping chinh xac (tranh nhieu mini-batch)
+            full_labels = self._assign(X, centers)
+            full_inertia = self._compute_inertia(X, centers, full_labels)
+
+            if full_inertia < best_inertia - self.tol:
+                best_inertia = full_inertia
                 best_centers = centers.copy()
                 no_improve = 0
             else:
@@ -605,8 +635,8 @@ class PCA:
             X_centered = X - mu
     2. SVD:
             X_centered = U * Sigma * V^T
-    3. Thành phần chính:
-            W = V^T[:n_components]
+    3. Thành phần chính (Sign Determinism adjustment):
+            W = V^T[:n_components] * sign(V^T)
     4. Chiếu dữ liệu:
             Z = X_centered * W^T
     """
@@ -626,7 +656,12 @@ class PCA:
 
         U, sigma, Vt = np.linalg.svd(X_centered, full_matrices=False)
 
-        self.components_ = Vt[:self.n_components]
+        # Quyen tac Sign Determinism cho SVD (tra phai ky tu lon nhat co dau duong)
+        components = Vt[:self.n_components]
+        max_abs_cols = np.argmax(np.abs(components), axis=1)
+        signs = np.sign(components[np.arange(self.n_components), max_abs_cols])
+        signs[signs == 0] = 1.0
+        self.components_ = components * signs[:, np.newaxis]
 
         explained_variance = (sigma ** 2) / (n - 1)
         total_variance = np.sum(explained_variance)
@@ -662,7 +697,7 @@ def silhouette_score(X, labels):
     n_samples = X.shape[0]
 
     if len(unique_labels) < 2 or len(unique_labels) >= n_samples:
-        return 0.0
+        return np.nan
 
     diff = X[:, np.newaxis, :] - X[np.newaxis, :, :]
     dist_matrix = np.sqrt(np.sum(diff ** 2, axis=2))
@@ -711,7 +746,7 @@ def calinski_harabasz_score(X, labels):
     K = len(unique_labels)
 
     if K < 2 or K >= n:
-        return 0.0
+        return np.nan
 
     grand_mean = np.mean(X, axis=0)
 
@@ -729,6 +764,7 @@ def calinski_harabasz_score(X, labels):
         W += np.sum((C_k - mu_k) ** 2)
 
     if W == 0.0:
+        # Avoid division by zero when points in clusters are identical to centroids
         return 1.0e12
 
     ch_score = (B / (K - 1)) / (W / (n - K))
@@ -747,7 +783,37 @@ def davies_bouldin_score(X, labels):
     n = X.shape[0]
 
     if K < 2 or K >= n:
-        return 0.0
+        return np.nan
+
+    centroids = []
+    dispersions = []
+
+    for label in unique_labels:
+        C_k = X[labels == label]
+        mu_k = np.mean(C_k, axis=0)
+        s_k = np.mean(np.linalg.norm(C_k - mu_k, axis=1))
+        centroids.append(mu_k)
+        dispersions.append(s_k)
+
+    centroids = np.array(centroids)
+    dispersions = np.array(dispersions)
+
+    R = np.zeros((K, K), dtype=np.float64)
+    for i in range(K):
+        for j in range(K):
+            if i == j:
+                continue
+            d_ij = np.linalg.norm(centroids[i] - centroids[j])
+            if d_ij > 0:
+                R[i, j] = (dispersions[i] + dispersions[j]) / d_ij
+            else:
+                R[i, j] = 0.0
+
+    np.fill_diagonal(R, -np.inf)
+    D = np.max(R, axis=1)
+    D[D == -np.inf] = 0.0
+
+    return float(np.mean(D))
 
     centroids = []
     dispersions = []
