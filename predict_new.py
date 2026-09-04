@@ -21,12 +21,33 @@ def load_pipeline(model_path='kmeans_pipeline.pkl'):
         pipeline = pickle.load(f)
     return pipeline
 
+def validate_input_data(df):
+    """
+    Kiểm tra tính hợp lệ của dữ liệu đầu vào trước khi thực hiện suy luận.
+    - Kiểm tra đủ 6 cột đặc trưng chi tiêu
+    - Kiểm tra kiểu dữ liệu số
+    - Kiểm tra không chứa giá trị âm
+    """
+    required_cols = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"Dữ liệu thiếu các cột chi tiêu bắt buộc: {missing}")
+
+    for col in required_cols:
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            raise TypeError(f"Cột '{col}' phải là kiểu dữ liệu số.")
+
+    if (df[required_cols] < 0).any().any():
+        raise ValueError("Chi tiêu ngành hàng không được chứa giá trị âm.")
+
 def preprocess_new_data(df):
     """
     Thực hiện Feature Engineering đồng bộ với main.py:
-    1. Biến đổi log1p cho 6 nhóm chi tiêu: Fresh_log, Milk_log, ...
-    2. Biến đổi log1p cho các tỷ lệ: Fresh_Ratio_log, NonEssential_Ratio_log, Grocery_Milk_Ratio_log
+    1. Kiểm tra tính hợp lệ của dữ liệu vào (validate_input_data)
+    2. Biến đổi log1p cho 6 nhóm chi tiêu: Fresh_log, Milk_log, ...
+    3. Biến đổi log1p cho các tỷ lệ: Fresh_Ratio_log, NonEssential_Ratio_log, Grocery_Milk_Ratio_log
     """
+    validate_input_data(df)
     df_proc = df.copy()
     feature_cols = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']
     
