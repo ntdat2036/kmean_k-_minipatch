@@ -20,6 +20,7 @@ Chuoi cai tien thuat toan:
 """
 
 import numpy as np
+import pandas as pd
 import pickle
 
 
@@ -887,3 +888,93 @@ class Pipeline:
             pipeline = pickle.load(f)
         print(f"[Pipeline] Đã nạp pipeline từ: {filepath}")
         return pipeline
+
+
+# ===========================================================================
+# SHARED PREPROCESSING & DYNAMIC CLUSTER PROFILING
+# ===========================================================================
+
+def validate_input_data(df):
+    """
+    Kiểm tra tính hợp lệ của dữ liệu đầu vào.
+    - Kiểm tra đủ 6 cột chi tiêu
+    - Kiểm tra kiểu dữ liệu số
+    - Kiểm tra không chứa giá trị âm
+    """
+    required_cols = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"Dữ liệu thiếu các cột chi tiêu bắt buộc: {missing}")
+
+    for col in required_cols:
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            raise TypeError(f"Cột '{col}' phải là kiểu dữ liệu số.")
+
+    if (df[required_cols] < 0).any().any():
+        raise ValueError("Chi tiêu ngành hàng không được chứa giá trị âm.")
+
+
+def preprocess_features(df):
+    """
+    Hàm tiền xử lý tập trung dùng chung cho train (main.py) và predict (predict_new.py).
+    Đảm bảo 100% đồng bộ đặc trưng và thứ tự cột.
+    """
+    validate_input_data(df)
+    df_proc = df.copy()
+    feature_cols = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']
+
+    for col in feature_cols:
+        df_proc[f'{col}_log'] = np.log1p(df_proc[col])
+
+    total_spend = df_proc[feature_cols].sum(axis=1)
+    df_proc['Fresh_Ratio_log']        = np.log1p(df_proc['Fresh'] / (total_spend + 1e-6))
+    df_proc['NonEssential_Ratio_log'] = np.log1p((df_proc['Grocery'] + df_proc['Detergents_Paper']) / (total_spend + 1e-6))
+    df_proc['Grocery_Milk_Ratio_log'] = np.log1p(df_proc['Grocery'] / (df_proc['Milk'] + 1e-6))
+
+    training_cols = [f'{col}_log' for col in feature_cols] + [
+        'Fresh_Ratio_log', 'NonEssential_Ratio_log', 'Grocery_Milk_Ratio_log'
+    ]
+    return df_proc[training_cols]
+
+
+def map_cluster_profiles(df_raw, labels):
+    """
+    Ánh xạ động nhãn cụm (0, 1, 2) dựa trên đặc trưng chi tiêu thực tế thay vì hard-code index:
+    - Cụm có Total Spend trung bình cao nhất -> "VIP / Cao cấp"
+    - Trong các cụm còn lại, cụm có tỷ lệ Fresh + Frozen cao nhất -> "HoReCa (Nhà hàng / Khách sạn)"
+    - Cụm còn lại -> "Retail (Bán lẻ phổ thông)"
+    """
+    df_temp = df_raw.copy()
+    df_temp['Cluster'] = labels
+    feature_cols = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']
+    df_temp['Total_Spend'] = df_temp[feature_cols].sum(axis=1)
+
+    cluster_ids = np.unique(labels)
+    profiles = {}
+
+    # 1. Tìm cụm VIP: Total Spend trung bình cao nhất
+    avg_spends = {c: df_temp[df_temp['Cluster'] == c]['Total_Spend'].mean() for c in cluster_ids}
+    vip_cluster = max(avg_spends, key=avg_spends.get)
+    profiles[vip_cluster] = "Cụm VIP / Cao cấp: Tổng chi tiêu vượt trội ở tất cả các ngành hàng"
+
+    # 2. Xử lý các cụm còn lại
+    remaining = [c for c in cluster_ids if c != vip_cluster]
+    if len(remaining) >= 2:
+        horeca_ratios = {}
+        for c in remaining:
+            sub = df_temp[df_temp['Cluster'] == c]
+            fresh_frozen = (sub['Fresh'] + sub['Frozen']).sum()
+            tot = sub['Total_Spend'].sum() + 1e-6
+            horeca_ratios[c] = fresh_frozen / tot
+
+        horeca_cluster = max(horeca_ratios, key=horeca_ratios.get)
+        profiles[horeca_cluster] = "Cụm Nhà hàng / Khách sạn (HoReCa): Nhu cầu Thực phẩm tươi sống & Đông lạnh cao"
+
+        retail_cluster = [c for c in remaining if c != horeca_cluster][0]
+        profiles[retail_cluster] = "Cụm Bán lẻ phổ thông (Retail): Nhu cầu Tạp hóa, Sữa & Chất tẩy rửa cao"
+    else:
+        for c in remaining:
+            profiles[c] = f"Cụm {c}: Phân khúc tiêu dùng phổ thông"
+
+    return profiles
+

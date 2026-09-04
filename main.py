@@ -26,32 +26,22 @@ from model import (
     silhouette_score,
     calinski_harabasz_score,
     davies_bouldin_score,
-    Pipeline
+    Pipeline,
+    preprocess_features,
+    map_cluster_profiles
 )
 
 CLUSTER_COLORS = ["#E74C3C", "#2ECC71", "#3498DB"]
 
 
 def load_and_preprocess_data(data_path):
-    """Nap du lieu va tao dac trung (dung log1p cho ca ratio de giam skewness/outliers)."""
+    """Nap du lieu va tao dac trung dung chung preprocess_features tu model.py."""
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Khong tim thay file: {data_path}")
     df_raw = pd.read_csv(data_path)
-    df = df_raw.copy()
-    feature_cols = ["Fresh", "Milk", "Grocery", "Frozen", "Detergents_Paper", "Delicassen"]
-    for col in feature_cols:
-        df[f"{col}_log"] = np.log1p(df[col])
-    df["Total_Spend"] = df[feature_cols].sum(axis=1)
-
-    # Log1p tren cac ty le chi tieu de tranh phinh to Z-score do outliers
-    df["Fresh_Ratio_log"]        = np.log1p(df["Fresh"] / (df["Total_Spend"] + 1e-6))
-    df["NonEssential_Ratio_log"] = np.log1p((df["Grocery"] + df["Detergents_Paper"]) / (df["Total_Spend"] + 1e-6))
-    df["Grocery_Milk_Ratio_log"] = np.log1p(df["Grocery"] / (df["Milk"] + 1e-6))
-
-    training_cols = [f"{col}_log" for col in feature_cols] + [
-        "Fresh_Ratio_log", "NonEssential_Ratio_log", "Grocery_Milk_Ratio_log"
-    ]
-    return df_raw, df, training_cols
+    df_features = preprocess_features(df_raw)
+    feature_cols = list(df_features.columns)
+    return df_raw, df_features, feature_cols
 
 
 def evaluate_clustering(X_scaled, labels):
@@ -288,6 +278,11 @@ def run_pipeline():
     print(f"  ==> Mo hinh duoc chon: '{best_key}'")
 
     best_labels = results[best_key]["labels"]
+
+    print("\n  [Dynamic Cluster Mapping] Dynamic profiling theo chi tieu thuc te:")
+    profiles = map_cluster_profiles(df_raw, best_labels)
+    for c_id, desc in profiles.items():
+        print(f"    - Cum {c_id}: {desc}")
 
     df_export = df_raw.copy()
     df_export["Cluster"] = best_labels
