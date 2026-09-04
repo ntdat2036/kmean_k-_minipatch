@@ -236,7 +236,12 @@ def find_optimal_k(X_scaled, k_min=2, k_max=8, save_path="elbow_silhouette_k.png
 
     best_k_idx = int(np.argmax(sil_scores))
     best_k = k_values[best_k_idx]
-    print(f"  ==> So cum K dat Silhouette cao nhat: K = {best_k} (Silhouette = {sil_scores[best_k_idx]:.4f})\n")
+    print(f"  ==> So cum K dat Silhouette cao nhat: K = {best_k} (Silhouette = {sil_scores[best_k_idx]:.4f})")
+    if best_k != 3:
+        print(f"  Luu y: Mac du K = {best_k} dat Silhouette cao nhat ve mat dinh luong,")
+        print(f"         mo hinh chinh van duy tri K = 3 vi phu hop voi 3 phan khuc kinh doanh thuc te (Retail / HoReCa / VIP).\n")
+    else:
+        print(f"  ==> K = 3 trung hop hoan hao voi ca dinh luong (Silhouette) va 3 phan khuc kinh doanh thuc te.\n")
     return k_values, inertias, sil_scores
 
 
@@ -257,7 +262,7 @@ def run_pipeline():
     X_scaled = scaler.fit_transform(X_train)
     print(f"      X_scaled shape: {X_scaled.shape}")
 
-    print("\n[3/7] Phân tích chọn số cụm K tối ưu (Elbow & Silhouette)...")
+    print("\n[3/7] Phan tich chon so cum K toi uu (Elbow & Silhouette)...")
     find_optimal_k(X_scaled)
 
     print("\n[4/7] Huan luyen ca 3 thuat toan phan cum (K=3)...")
@@ -266,11 +271,11 @@ def run_pipeline():
 
     print_comparison_table(results)
 
-    print("[5/6] Ve bieu do so sanh PCA va hoi tu...")
+    print("[5/7] Ve bieu do so sanh PCA va hoi tu...")
     plot_pca_comparison(X_scaled, results)
     plot_convergence(results)
 
-    print("\n[6/6] Tu dong chon mo hinh tot nhat (Dynamic Model Selection)...")
+    print("\n[6/7] Tu dong chon mo hinh tot nhat (Dynamic Model Selection)...")
     best_key, composite_scores = select_best_algorithm(results)
     print(f"  Diem Composite Metrics (Silhouette + CHI + DBI):")
     for k, sc in composite_scores.items():
@@ -279,7 +284,7 @@ def run_pipeline():
 
     best_labels = results[best_key]["labels"]
 
-    print("\n  [Dynamic Cluster Mapping] Dynamic profiling theo chi tieu thuc te:")
+    print("\n[7/7] Lap ho so phan cum (Dynamic Profiling) va luu Pipeline...")
     profiles = map_cluster_profiles(df_raw, best_labels)
     for c_id, desc in profiles.items():
         print(f"    - Cum {c_id}: {desc}")
