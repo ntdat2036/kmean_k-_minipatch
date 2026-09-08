@@ -241,7 +241,7 @@ def find_optimal_k(X_scaled, k_min=2, k_max=8, save_path="elbow_silhouette_k.png
     best_k = k_values[best_k_idx]
     print(f"  ==> So cum K dat Silhouette cao nhat: K = {best_k} (Silhouette = {sil_scores[best_k_idx]:.4f})")
     print("  ----------------------------------------------------------------------")
-    print("  [GIAI THICH NGHIEP VU KININH DOANH CHON K=3]")
+    print("  [GIAI THICH NGHIEP VU KINH DOANH CHON K=3]")
     if best_k != 3:
         print(f"  -> Mac du K = {best_k} dat chi so Silhouette cao nhat ve mat dinh luong toan hoc,")
         print("  -> Mo hinh thuc te duy tri K = 3 vi phu hop voi 3 phan khuc kinh doanh thuc te:")

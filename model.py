@@ -71,6 +71,8 @@ class StandardScaler:
         return self.fit(X).transform(X)
 
     def inverse_transform(self, Z):
+        if self.mean_ is None or self.scale_ is None:
+            raise RuntimeError("StandardScaler chưa được fit. Gọi fit() hoặc fit_transform() trước.")
         Z = np.asarray(Z, dtype=np.float64)
         return Z * self.scale_ + self.mean_
 
@@ -279,7 +281,7 @@ class KMeansPlusPlus:
         inertia_history_ : list  — WCSS cua tung lan chay n_init.
     """
 
-    def __init__(self, n_clusters=3, max_iter=300, n_init=5,
+    def __init__(self, n_clusters=3, max_iter=300, n_init=10,
                  random_state=None, tol=1e-4, oversample_factor=3, **kwargs):
         self.n_clusters = n_clusters
         self.max_iter = max_iter
@@ -494,7 +496,7 @@ class MiniBatchKMeans:
     """
 
     def __init__(self, n_clusters=3, max_iter=200, batch_size=100,
-                 random_state=None, tol=1e-4, max_no_improvement=10, n_init=3, **kwargs):
+                 random_state=None, tol=1e-4, max_no_improvement=10, n_init=10, **kwargs):
         self.n_clusters = n_clusters
         self.max_iter = max_iter
         self.batch_size = batch_size
@@ -901,8 +903,6 @@ class Pipeline:
 # ===========================================================================
 
 from preprocess import validate_input_data, build_features
-
-preprocess_features = build_features
 
 
 def map_cluster_profiles(df, labels):
