@@ -450,7 +450,10 @@ class MiniBatchKMeans:
         batch_size         : int   — kich thuoc moi mini-batch b. Mac dinh = 100.
         random_state       : int   — seed ngau nhien. Mac dinh = None.
         tol                : float — nguong cai thien inertia. Mac dinh = 1e-4.
-        max_no_improvement : int   — so buoc khong cai thien truoc khi stop. Mac dinh = 10.
+        max_no_improvement : int   — so LAN DANH GIA (moi 5 buoc mini-batch mot lan)
+                                      khong cai thien full_inertia truoc khi dung som.
+                                      Mac dinh = 10. Tuong duong toi da
+                                      (max_no_improvement * 5) buoc mini-batch thuc te.
         n_init             : int   — so lan khoi tao lai. Mac dinh = 3.
 
     Thuộc tính sau fit:
@@ -767,7 +770,7 @@ def calinski_harabasz_score(X, labels):
 
     if W == 0.0:
         # Avoid division by zero when points in clusters are identical to centroids
-        return 1.0e12
+        return np.nan
 
     ch_score = (B / (K - 1)) / (W / (n - K))
     return float(ch_score)

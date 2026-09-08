@@ -27,6 +27,15 @@ def validate_input_data(df):
     if (df[FEATURE_COLS] < 0).any().any():
         raise ValueError("Chi tiêu ngành hàng không được chứa giá trị âm.")
 
+    if len(df) == 0:
+        raise ValueError("Dữ liệu đầu vào rỗng, không có dòng nào để xử lý.")
+
+    if df[FEATURE_COLS].isnull().any().any():
+        raise ValueError("Dữ liệu chứa giá trị thiếu (NaN) ở cột chi tiêu.")
+
+    if np.isinf(df[FEATURE_COLS].values).any():
+        raise ValueError("Dữ liệu chứa giá trị vô cực (Inf) ở cột chi tiêu.")
+
 
 def build_features(df):
     """

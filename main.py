@@ -8,6 +8,7 @@ TUYET DOI KHONG SU DUNG scikit-learn.
 import sys
 import os
 import time
+import json
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -294,6 +295,11 @@ def run_pipeline():
     profiles = map_cluster_profiles(df_raw, best_labels)
     for c_id, desc in profiles.items():
         print(f"    - Cum {c_id}: {desc}")
+
+    profiles_to_save = {str(k): v for k, v in profiles.items()}
+    with open("cluster_profiles.json", "w", encoding="utf-8") as f:
+        json.dump(profiles_to_save, f, ensure_ascii=False, indent=2)
+    print("  Da luu cluster profiles ra: cluster_profiles.json")
 
     df_export = df_raw.copy()
     df_export["Cluster"] = best_labels

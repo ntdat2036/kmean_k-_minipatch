@@ -12,8 +12,7 @@ import numpy as np
 from model import (
     StandardScaler,
     KMeans,
-    Pipeline,
-    map_cluster_profiles
+    Pipeline
 )
 from preprocess import build_features, FEATURE_COLS
 
@@ -26,6 +25,16 @@ def load_pipeline(model_path='kmeans_pipeline.pkl'):
     with open(model_path, 'rb') as f:
         pipeline = pickle.load(f)
     return pipeline
+
+def load_cluster_profiles(path="cluster_profiles.json"):
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Không tìm thấy file: {path}. Vui lòng chạy main.py để huấn luyện và sinh file này."
+        )
+    import json
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    return {int(k): v for k, v in raw.items()}
 
 def main():
     print("Khởi tạo mô hình Pipeline K-Means...")
@@ -53,8 +62,8 @@ def main():
     predictions = pipeline.predict(X_new)
     sample_customers['Cluster'] = predictions
 
-    # Ánh xạ nhãn động dựa trên chi tiêu thực tế (Dynamic Profiling)
-    profiles = map_cluster_profiles(sample_customers, predictions)
+    # Ánh xạ nhãn cố định đã tính từ tập train (nạp từ cluster_profiles.json)
+    profiles = load_cluster_profiles()
 
     print("\n" + "=" * 70)
     print("  KẾT QUẢ PHÂN KHÚC KHÁCH HÀNG MỚI (DYNAMIC CLUSTER MAPPING)")
