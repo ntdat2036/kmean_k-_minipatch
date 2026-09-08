@@ -64,6 +64,8 @@ Kmeans/
 ├── model.py                         # Định nghĩa toàn bộ thuật toán Pure NumPy (Scaler, KMeans, KMeans++, MiniBatch, PCA, Metrics, Pipeline)
 ├── main.py                          # Script huấn luyện chính (Tối ưu K, so sánh 3 thuật toán, xuất Pipeline & CSV)
 ├── predict_new.py                   # Script suy luận dự đoán phân cụm cho dữ liệu khách hàng mới
+├── kmeans_analysis.ipynb            # File Jupyter Notebook báo cáo & thực thi tương tác đồ án
+├── cluster_profiles.json            # File nạp hồ sơ nhãn kinh doanh phân cụm cố định
 ├── test_kmeans_pipeline.py          # Bộ kiểm thử tự động với Pytest (9/9 tests passed)
 ├── requirements.txt                 # Khai báo các thư viện phụ thuộc (NumPy, Pandas, Matplotlib, Pytest)
 └── README.md                        # Tài liệu hướng dẫn & Báo cáo kỹ thuật dự án
