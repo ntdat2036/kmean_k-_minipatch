@@ -141,3 +141,21 @@ def test_preprocessed_csv():
         assert 'Cluster' in df_prep.columns, "File wholesale_preprocessed.csv thiếu cột Cluster"
         assert list(df_prep.columns)[-1] == 'Cluster', "Cột Cluster phải nằm ở vị trí cuối cùng"
 
+
+def test_predict_before_fit_raises_error():
+    """Kiem tra goi predict() truoc fit() bao loi ro rang (RuntimeError)."""
+    model = KMeans(n_clusters=3)
+    X_dummy = np.random.rand(10, 4)
+    with pytest.raises(RuntimeError):
+        model.predict(X_dummy)
+
+
+def test_n_iter_recorded_after_fit():
+    """Kiem tra n_iter_ duoc ghi nhan sau khi fit (khong con None)."""
+    X_dummy = np.random.rand(50, 3)
+    model = KMeans(n_clusters=2, n_init=3, random_state=1)
+    model.fit(X_dummy)
+    assert model.n_iter_ is not None
+    assert model.n_iter_ > 0
+
+

@@ -92,8 +92,10 @@ def compare_algorithms(X_scaled):
 
 def select_best_algorithm(results):
     """
-    Tu dong chon thuat toan tot nhat dua tren Composite Metric Score:
+    Tu dong chon thuat toan tot nhat dua tren mot chi so tong hop
+    DO NHOM TU DE XUAT (khong phai chi so chuan hoc thuat), tinh bang:
     Score = Norm(Silhouette) + Norm(CHI) + Norm(1 - DBI)
+    (Moi chi so duoc chuan hoa min-max ve [0,1] truoc khi cong, trong so bang nhau).
     """
     names = list(results.keys())
     sil = np.array([results[k]["silhouette"] for k in names])
@@ -284,7 +286,7 @@ def run_pipeline():
 
     print("\n[6/7] Tu dong chon mo hinh tot nhat (Dynamic Model Selection)...")
     best_key, composite_scores = select_best_algorithm(results)
-    print(f"  Diem Composite Metrics (Silhouette + CHI + DBI):")
+    print(f"  Diem tong hop (do nhom tu de xuat, chuan hoa Silhouette + CHI + DBI):")
     for k, sc in composite_scores.items():
         print(f"    - {k:<30}: {sc:.4f}")
     print(f"  ==> Mo hinh duoc chon: '{best_key}'")

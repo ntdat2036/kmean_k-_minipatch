@@ -62,6 +62,8 @@ class StandardScaler:
         return self
 
     def transform(self, X):
+        if self.mean_ is None:
+            raise RuntimeError("StandardScaler chưa được fit. Gọi fit() hoặc fit_transform() trước.")
         X = np.asarray(X, dtype=np.float64)
         return (X - self.mean_) / self.scale_
 
@@ -131,6 +133,7 @@ class KMeans:
         self.cluster_centers_ = None
         self.labels_ = None
         self.inertia_ = None
+        self.n_iter_ = None
 
     def _random_init(self, X, rng):
         """
@@ -164,8 +167,10 @@ class KMeans:
         n_samples = X.shape[0]
         centers = self._random_init(X, rng)
         labels = np.full(n_samples, -1, dtype=int)
+        actual_iter = 0
 
         for _ in range(self.max_iter):
+            actual_iter += 1
             # E-step: gan nhan theo tam gan nhat
             distances = self._compute_distances(X, centers)
             new_labels = np.argmin(distances, axis=1)
@@ -182,7 +187,7 @@ class KMeans:
             if shift <= self.tol:
                 break
 
-        return centers, labels, self._compute_inertia(X, centers, labels)
+        return centers, labels, self._compute_inertia(X, centers, labels), actual_iter
 
     def fit(self, X):
         X = np.asarray(X, dtype=np.float64)
@@ -190,21 +195,26 @@ class KMeans:
 
         best_inertia = np.inf
         best_centers = best_labels = None
+        best_n_iter = 0
 
         for run in range(self.n_init):
             rng = np.random.RandomState(base_seed + run)
-            centers, labels, inertia = self._fit_single(X, rng)
+            centers, labels, inertia, n_iter = self._fit_single(X, rng)
             if inertia < best_inertia:
                 best_inertia = inertia
                 best_centers = centers.copy()
                 best_labels = labels.copy()
+                best_n_iter = n_iter
 
         self.cluster_centers_ = best_centers
         self.labels_ = best_labels
         self.inertia_ = best_inertia
+        self.n_iter_ = best_n_iter
         return self
 
     def predict(self, X):
+        if self.cluster_centers_ is None:
+            raise RuntimeError("Mô hình chưa được huấn luyện. Gọi fit() hoặc fit_predict() trước khi predict().")
         X = np.asarray(X, dtype=np.float64)
         return np.argmin(self._compute_distances(X, self.cluster_centers_), axis=1)
 
@@ -282,6 +292,7 @@ class KMeansPlusPlus:
         self.labels_ = None
         self.inertia_ = None
         self.inertia_history_ = []
+        self.n_iter_ = None
 
     def _d2_init_with_oversampling(self, X, rng):
         """
@@ -313,13 +324,23 @@ class KMeansPlusPlus:
 
             cumprobs = np.cumsum(probs)
 
-            # Oversampling: chon l ung vien khong trung voi tam da chon
+            # Oversampling: chon l ung vien khong trung nhau va khong trung tam da chon
             l = min(n_samples - len(selected_indices), max(1, self.oversample_factor))
             candidate_idxs = []
-            for _ in range(l):
+            tried_in_round = set()
+            max_attempts = l * 5
+            attempts = 0
+            while len(candidate_idxs) < l and attempts < max_attempts:
+                attempts += 1
                 r = rng.rand()
                 idx = min(np.searchsorted(cumprobs, r), n_samples - 1)
+                if idx in selected_indices or idx in tried_in_round:
+                    continue
+                tried_in_round.add(idx)
                 candidate_idxs.append(idx)
+            if not candidate_idxs:
+                remaining_pts = [i for i in range(n_samples) if i not in selected_indices]
+                candidate_idxs = [remaining_pts[0]]
 
             # Chon ung vien co phi(c) nho nhat
             best_idx = candidate_idxs[0]
@@ -356,8 +377,10 @@ class KMeansPlusPlus:
         n_samples = X.shape[0]
         centers = self._d2_init_with_oversampling(X, rng)
         labels = np.full(n_samples, -1, dtype=int)
+        actual_iter = 0
 
         for _ in range(self.max_iter):
+            actual_iter += 1
             distances = self._compute_distances(X, centers)
             new_labels = np.argmin(distances, axis=1)
 
@@ -372,7 +395,7 @@ class KMeansPlusPlus:
             if shift <= self.tol:
                 break
 
-        return centers, labels, self._compute_inertia(X, centers, labels)
+        return centers, labels, self._compute_inertia(X, centers, labels), actual_iter
 
     def fit(self, X):
         X = np.asarray(X, dtype=np.float64)
@@ -380,23 +403,28 @@ class KMeansPlusPlus:
 
         best_inertia = np.inf
         best_centers = best_labels = None
+        best_n_iter = 0
         self.inertia_history_ = []
 
         for run in range(self.n_init):
             rng = np.random.RandomState(base_seed + run)
-            centers, labels, inertia = self._fit_single(X, rng)
+            centers, labels, inertia, n_iter = self._fit_single(X, rng)
             self.inertia_history_.append(inertia)
             if inertia < best_inertia:
                 best_inertia = inertia
                 best_centers = centers.copy()
                 best_labels = labels.copy()
+                best_n_iter = n_iter
 
         self.cluster_centers_ = best_centers
         self.labels_ = best_labels
         self.inertia_ = best_inertia
+        self.n_iter_ = best_n_iter
         return self
 
     def predict(self, X):
+        if self.cluster_centers_ is None:
+            raise RuntimeError("Mô hình chưa được huấn luyện. Gọi fit() hoặc fit_predict() trước khi predict().")
         X = np.asarray(X, dtype=np.float64)
         return np.argmin(self._compute_distances(X, self.cluster_centers_), axis=1)
 
@@ -618,6 +646,8 @@ class MiniBatchKMeans:
         return self
 
     def predict(self, X):
+        if self.cluster_centers_ is None:
+            raise RuntimeError("Mô hình chưa được huấn luyện. Gọi fit() hoặc fit_predict() trước khi predict().")
         X = np.asarray(X, dtype=np.float64)
         return self._assign(X, self.cluster_centers_)
 
@@ -679,6 +709,8 @@ class PCA:
         return self
 
     def transform(self, X):
+        if self.components_ is None:
+            raise RuntimeError("PCA chưa được fit. Gọi fit() hoặc fit_transform() trước.")
         X = np.asarray(X, dtype=np.float64)
         X_centered = X - self.mean_
         return np.dot(X_centered, self.components_.T)
@@ -878,7 +910,17 @@ def map_cluster_profiles(df, labels):
     Ánh xạ động nhãn kinh doanh cho từng cụm dựa trên đặc trưng chi tiêu
     thực tế trung bình (Dynamic Profiling) — không hard-code theo index cụm,
     vì K-Means không đảm bảo thứ tự nhãn cố định qua các lần train.
+
+    LƯU Ý: Hàm này được thiết kế CỐ ĐỊNH cho K=3 với đúng 3 nhãn kinh doanh
+    (VIP, HoReCa, Retail) tương ứng bài toán phân khúc Wholesale Customers
+    của đồ án. Nếu `labels` chứa số cụm khác 3, hàm sẽ gán tất cả cụm còn
+    lại (ngoài VIP và HoReCa) là "Retail" — không tổng quát cho K tùy ý.
     """
+    n_clusters_found = len(np.unique(labels))
+    if n_clusters_found != 3:
+        print(f"  [Canh bao] map_cluster_profiles duoc thiet ke cho K=3, "
+              f"nhung nhan dau vao co {n_clusters_found} cum. Ket qua gan nhan co the khong chinh xac.")
+
     feature_cols = ["Fresh", "Milk", "Grocery", "Frozen", "Detergents_Paper", "Delicassen"]
     df = df.copy()
     df["_cluster"] = np.asarray(labels)
