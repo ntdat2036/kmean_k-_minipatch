@@ -2,7 +2,7 @@
 model.py
 ========
 Thư viện thuật toán Machine Learning tự viết hoàn toàn bang NumPy.
-TUYET DOI KHONG SU DUNG scikit-learn (sklearn).
+KHONG SU DUNG scikit-learn (sklearn).
 
 Cac thanh phan:
   - StandardScaler          : Chuan hoa Z-score
