@@ -260,7 +260,7 @@ def run_pipeline():
     print("  So sanh: KMeans | KMeans++ | MiniBatchKMeans")
     print("=" * 70)
 
-    data_path = "Wholesale customers data.csv"
+    data_path = "Wholesale_customers_data.csv"
     print(f"\n[1/7] Nap du lieu tu file: {data_path}")
     df_raw, df_processed, feature_cols = load_and_preprocess_data(data_path)
     print(f"      So mau: {df_processed.shape[0]}, So dac trung: {len(feature_cols)}")

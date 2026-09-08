@@ -53,7 +53,9 @@ def build_features(df):
     total_spend = df_proc[FEATURE_COLS].sum(axis=1)
     df_proc["Fresh_Ratio_log"]        = np.log1p(df_proc["Fresh"] / (total_spend + 1e-6))
     df_proc["NonEssential_Ratio_log"] = np.log1p((df_proc["Grocery"] + df_proc["Detergents_Paper"]) / (total_spend + 1e-6))
-    df_proc["Grocery_Milk_Ratio_log"] = np.log1p(df_proc["Grocery"] / (df_proc["Milk"] + 1e-6))
+    grocery_milk_ratio = df_proc["Grocery"] / (df_proc["Milk"] + 1e-6)
+    grocery_milk_ratio = np.clip(grocery_milk_ratio, a_min=0, a_max=1000)
+    df_proc["Grocery_Milk_Ratio_log"] = np.log1p(grocery_milk_ratio)
 
     training_cols = [f"{c}_log" for c in FEATURE_COLS] + [
         "Fresh_Ratio_log", "NonEssential_Ratio_log", "Grocery_Milk_Ratio_log"

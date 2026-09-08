@@ -23,7 +23,7 @@ from model import (
 )
 from preprocess import build_features, validate_input_data, FEATURE_COLS
 
-DATA_PATH = 'Wholesale customers data.csv'
+DATA_PATH = 'Wholesale_customers_data.csv'
 MODEL_PATH = 'kmeans_pipeline.pkl'
 PREPROCESSED_PATH = 'wholesale_preprocessed.csv'
 
@@ -157,5 +157,16 @@ def test_n_iter_recorded_after_fit():
     model.fit(X_dummy)
     assert model.n_iter_ is not None
     assert model.n_iter_ > 0
+
+
+def test_near_zero_milk_ratio_clip():
+    """Kiểm tra build_features không gây ra inf/nan và clip tỷ lệ khi Milk rất nhỏ hoặc bằng 0."""
+    df = pd.read_csv(DATA_PATH).copy()
+    df.loc[0, 'Milk'] = 0
+    df_feat = build_features(df)
+    assert not np.isnan(df_feat.values).any(), "Dữ liệu có chứa NaN sau build_features"
+    assert not np.isinf(df_feat.values).any(), "Dữ liệu có chứa Inf sau build_features"
+
+
 
 

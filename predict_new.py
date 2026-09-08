@@ -49,7 +49,7 @@ def main():
         # Khách hàng 1: Nhu cầu HoReCa tươi sống cao
         {'Channel': 1, 'Region': 3, 'Fresh': 35000, 'Milk': 2000, 'Grocery': 3000, 'Frozen': 9000, 'Detergents_Paper': 400, 'Delicassen': 1500},
         # Khách hàng 2: Nhu cầu Bán lẻ Retail cao
-        {'Channel': 2, 'Region': 3, 'Fresh': 2000, 'Milk': 12000, 'Grocery': 18000, 'Frozen': 800, 'Detergents_Paper': 7000, 'Delicassen': 1200},
+        {'Channel': 2, 'Region': 3, 'Fresh': 800, 'Milk': 3000, 'Grocery': 6000, 'Frozen': 300, 'Detergents_Paper': 2500, 'Delicassen': 400},
         # Khách hàng 3: Khách hàng VIP chi tiêu cực lớn
         {'Channel': 1, 'Region': 3, 'Fresh': 55000, 'Milk': 30000, 'Grocery': 45000, 'Frozen': 15000, 'Detergents_Paper': 18000, 'Delicassen': 10000}
     ])
