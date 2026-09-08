@@ -568,8 +568,8 @@ class MiniBatchKMeans:
             batch_inertia = float(np.sum(np.min(dist_sq_b, axis=1)))
             convergence_hist.append(batch_inertia)
 
-            # Đánh giá full_inertia mỗi 5 bước hoặc ở bước cuối cùng để tối ưu tốc độ và lọc nhiễu batch
-            if (actual_iter % 5 == 0) or (_ == self.max_iter - 1):
+            # Đánh giá full_inertia định kỳ (mỗi 5 bước, ở bước 0, hoặc ở bước cuối) trên toàn bộ X để tránh nhiễu do mini-batch ngẫu nhiên
+            if (_ == 0) or ((_ + 1) % 5 == 0) or (_ == self.max_iter - 1):
                 full_labels = self._assign(X, centers)
                 full_inertia = self._compute_inertia(X, centers, full_labels)
 
@@ -900,44 +900,34 @@ from preprocess import validate_input_data, build_features
 preprocess_features = build_features
 
 
-def map_cluster_profiles(df_raw, labels):
+def map_cluster_profiles(df, labels):
     """
-    Ánh xạ động nhãn cụm (0, 1, 2) dựa trên đặc trưng chi tiêu thực tế thay vì hard-code index:
-    - Cụm có Total Spend trung bình cao nhất -> "VIP / Cao cấp"
-    - Trong các cụm còn lại, cụm có tỷ lệ Fresh + Frozen cao nhất -> "HoReCa (Nhà hàng / Khách sạn)"
-    - Cụm còn lại -> "Retail (Bán lẻ phổ thông)"
+    Ánh xạ động nhãn kinh doanh cho từng cụm dựa trên đặc trưng chi tiêu
+    thực tế trung bình (Dynamic Profiling) — không hard-code theo index cụm,
+    vì K-Means không đảm bảo thứ tự nhãn cố định qua các lần train.
     """
-    df_temp = df_raw.copy()
-    df_temp['Cluster'] = labels
-    feature_cols = ['Fresh', 'Milk', 'Grocery', 'Frozen', 'Detergents_Paper', 'Delicassen']
-    df_temp['Total_Spend'] = df_temp[feature_cols].sum(axis=1)
+    feature_cols = ["Fresh", "Milk", "Grocery", "Frozen", "Detergents_Paper", "Delicassen"]
+    df = df.copy()
+    df["_cluster"] = np.asarray(labels)
 
-    cluster_ids = np.unique(labels)
+    means = df.groupby("_cluster")[feature_cols].mean()
+    means["Total_Spend"] = means[feature_cols].sum(axis=1)
+    means["Fresh_Frozen_Ratio"] = (means["Fresh"] + means["Frozen"]) / means["Total_Spend"]
+
+    remaining = list(means.index)
     profiles = {}
 
-    # 1. Tìm cụm VIP: Total Spend trung bình cao nhất
-    avg_spends = {c: df_temp[df_temp['Cluster'] == c]['Total_Spend'].mean() for c in cluster_ids}
-    vip_cluster = max(avg_spends, key=avg_spends.get)
-    profiles[vip_cluster] = "Cụm VIP / Cao cấp: Tổng chi tiêu vượt trội ở tất cả các ngành hàng"
+    vip_id = means["Total_Spend"].idxmax()
+    profiles[vip_id] = "Khách hàng VIP / Cao cấp: Tổng chi tiêu vượt trội ở tất cả các ngành hàng"
+    remaining.remove(vip_id)
 
-    # 2. Xử lý các cụm còn lại
-    remaining = [c for c in cluster_ids if c != vip_cluster]
-    if len(remaining) >= 2:
-        horeca_ratios = {}
-        for c in remaining:
-            sub = df_temp[df_temp['Cluster'] == c]
-            fresh_frozen = (sub['Fresh'] + sub['Frozen']).sum()
-            tot = sub['Total_Spend'].sum() + 1e-6
-            horeca_ratios[c] = fresh_frozen / tot
+    horeca_id = means.loc[remaining, "Fresh_Frozen_Ratio"].idxmax()
+    profiles[horeca_id] = "Nhà hàng / Khách sạn (HoReCa): Nhu cầu Thực phẩm tươi sống & Đông lạnh cao"
+    remaining.remove(horeca_id)
 
-        horeca_cluster = max(horeca_ratios, key=horeca_ratios.get)
-        profiles[horeca_cluster] = "Cụm Nhà hàng / Khách sạn (HoReCa): Nhu cầu Thực phẩm tươi sống & Đông lạnh cao"
-
-        retail_cluster = [c for c in remaining if c != horeca_cluster][0]
-        profiles[retail_cluster] = "Cụm Bán lẻ phổ thông (Retail): Nhu cầu Tạp hóa, Sữa & Chất tẩy rửa cao"
-    else:
-        for c in remaining:
-            profiles[c] = f"Cụm {c}: Phân khúc tiêu dùng phổ thông"
+    for cid in remaining:
+        profiles[cid] = "Bán lẻ phổ thông (Retail): Nhu cầu Tạp hóa, Sữa & Chất tẩy rửa cao"
 
     return profiles
+
 

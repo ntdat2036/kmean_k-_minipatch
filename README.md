@@ -19,7 +19,7 @@ Dự án thực hiện phân khúc **440 khách hàng** của nhà phân phối 
 1. **Tiền Xử Lý & Feature Engineering Dùng Chung (`preprocess.py`)**:
    - Xây dựng module tập trung `build_features` duy nhất cho toàn bộ project.
    - Áp dụng biến đổi Logarithm ($\log(1+x)$) cho 6 ngành hàng gốc nhằm giảm độ lệch (skewness).
-   - Tạo thêm 3 tỷ lệ chi tiêu đặc trưng: `Fresh_Ratio_log`, `NonEssential_Ratio_log`, `Grocery_Milk_Ratio_log`.
+   - Tạo thêm 3 tỷ lệ chi tiêu đặc trưng dựa trên tổng chi tiêu `total_spend`: `Fresh_Ratio_log`, `NonEssential_Ratio_log`, `Grocery_Milk_Ratio_log` (biến `total_spend` chỉ làm mẫu số trung gian, không đưa trực tiếp vào không gian đặc trưng huấn luyện).
    - Bảo đảm **100% nhất quán đặc trưng** giữa quá trình Huấn luyện (`main.py`) và Suy luận dữ liệu mới (`predict_new.py`).
 
 2. **So Sánh 3 Biến Thể K-Means Công Bằng ($n\_init = 10$)**:
