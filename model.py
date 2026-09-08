@@ -817,36 +817,6 @@ def davies_bouldin_score(X, labels):
 
     return float(np.mean(D))
 
-    centroids = []
-    dispersions = []
-
-    for label in unique_labels:
-        C_k = X[labels == label]
-        mu_k = np.mean(C_k, axis=0)
-        s_k = np.mean(np.linalg.norm(C_k - mu_k, axis=1))
-        centroids.append(mu_k)
-        dispersions.append(s_k)
-
-    centroids = np.array(centroids)
-    dispersions = np.array(dispersions)
-
-    R = np.zeros((K, K), dtype=np.float64)
-    for i in range(K):
-        for j in range(K):
-            if i == j:
-                continue
-            d_ij = np.linalg.norm(centroids[i] - centroids[j])
-            if d_ij > 0:
-                R[i, j] = (dispersions[i] + dispersions[j]) / d_ij
-            else:
-                R[i, j] = 0.0
-
-    np.fill_diagonal(R, -np.inf)
-    D = np.max(R, axis=1)
-    D[D == -np.inf] = 0.0
-
-    return float(np.mean(D))
-
 
 # ===========================================================================
 # CLASS: Pipeline
