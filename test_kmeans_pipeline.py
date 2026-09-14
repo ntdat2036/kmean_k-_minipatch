@@ -138,6 +138,12 @@ def test_metrics():
     assert chi > 10.0, f"Calinski-Harabász Index phải lớn, thực tế: {chi}"
     assert dbi < 0.5, f"Davies-Bouldin Index phải nhỏ với cụm phân biệt, thực tế: {dbi}"
 
+    # Test trường hợp bệnh lý: 2 tâm cụm trùng nhau (d_ij = 0) -> DBI phải trả về np.inf (tàn phá điểm phân cụm)
+    X_colliding = np.array([[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0]])
+    labels_colliding = np.array([0, 0, 1, 1])
+    dbi_colliding = davies_bouldin_score(X_colliding, labels_colliding)
+    assert np.isinf(dbi_colliding), f"Ký hiệu DBI khi tâm cụm trùng nhau phải là np.inf, thực tế: {dbi_colliding}"
+
 
 def test_rand_index_identical_labels():
     """Kiểm tra chỉ số Rand Index khi 2 bộ nhãn trùng khớp hoàn toàn"""

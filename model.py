@@ -109,6 +109,11 @@ class KMeans:
     Điều kiện hội tụ:
         Delta = sum_{k=1}^{K} || mu_k^new - mu_k^old ||^2 <= tol
 
+    Xử lý cụm rỗng (Empty Cluster Fallback):
+    ----------------------------------------
+    Nếu cụm bị rỗng trong quá trình lặp (`|C_k| == 0`), tâm cụm giữ nguyên vị trí cũ `mu_k`.
+    (Lưu ý: scikit-learn sử dụng chiến lược tái khởi tạo tâm rỗng tại điểm xa nhất).
+
     Tham số (Hyperparameters):
     --------------------------
         n_clusters   : int   — so cum K. Mac dinh = 3.
@@ -674,8 +679,12 @@ class PCA:
             X_centered = U * Sigma * V^T
     3. Thành phần chính (Sign Determinism adjustment):
             W = V^T[:n_components] * sign(V^T)
-    4. Chiếu dữ liệu:
-            Z = X_centered * W^T
+    Ghi chú về tính tất định (Deterministic SVD):
+    ---------------------------------------------
+    PCA được cài đặt bằng thuật toán phân tích SVD đại số tuyến tính hoàn toàn
+    tất định. Tham số `random_state` được nhận qua `**kwargs` nhằm đảm bảo
+    tương thích API với scikit-learn, nhưng không có hiệu lực tính toán vì SVD
+    không sử dụng bước khởi tạo ngẫu nhiên nào.
     """
 
     def __init__(self, n_components=2, **kwargs):
@@ -857,7 +866,7 @@ def davies_bouldin_score(X, labels):
             if d_ij > 0:
                 R[i, j] = (dispersions[i] + dispersions[j]) / d_ij
             else:
-                R[i, j] = 0.0
+                R[i, j] = np.inf
 
     np.fill_diagonal(R, -np.inf)
     D = np.max(R, axis=1)
@@ -939,12 +948,17 @@ from preprocess import validate_input_data, build_features
 
 def map_cluster_profiles(df, labels):
     """
-    Ánh xạ động nhãn kinh doanh cho từng cụm dựa trên đặc trưng chi tiêu
-    thực tế trung bình (Dynamic Profiling) — không hard-code theo index cụm,
-    vì K-Means không đảm bảo thứ tự nhãn cố định qua các lần train.
+    Ánh xạ nhãn kinh doanh theo template 3 nhãn cố định cho K=3 (VIP, HoReCa, Retail)
+    với thuật toán gán động theo Cluster ID (Dynamic Cluster Assignment).
 
-    Chuẩn hóa 2 tiêu chí (Total_Spend & Fresh_Frozen_Ratio) bằng Z-score
-    và ưu tiên gán theo độ tách biệt (z-score) cao nhất trước.
+    Giải thích bản chất Dynamic vs Fixed Template:
+    ---------------------------------------------
+    1. Fixed Template: Bộ 3 nhãn nghiệp vụ (VIP, HoReCa, Retail) được thiết kế
+       cố định cho không gian bài toán K=3 của Wholesale Customers.
+    2. Dynamic Cluster Assignment: Thứ tự nhận nhãn của từng cụm (Cluster 0, 1, 2)
+       KHÔNG bị hard-code theo chỉ số index, mà được xác định động thông qua
+       chuẩn hóa Z-score 2 tiêu chí (Total_Spend & Fresh_Frozen_Ratio) để chọn cụm
+       nổi bật nhất cho từng nhãn.
     """
     n_clusters_found = len(np.unique(labels))
     if n_clusters_found != 3:
