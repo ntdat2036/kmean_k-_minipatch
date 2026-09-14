@@ -33,6 +33,7 @@ ENV/
 # =============================================
 kmeans_pipeline.pkl
 wholesale_preprocessed.csv
+cluster_profiles.json
 *.png
 
 # =============================================
