@@ -1031,9 +1031,9 @@ def map_cluster_profiles(df, labels):
         remaining.remove(best_cid)
 
     label_text = {
-        "VIP": "Khách hàng VIP / Cao cấp: Tổng chi tiêu vượt trội ở tất cả các ngành hàng",
-        "HoReCa": "Nhà hàng / Khách sạn (HoReCa): Nhu cầu Thực phẩm tươi sống & Đông lạnh cao",
-        "Retail": "Bán lẻ phổ thông (Retail): Nhu cầu Tạp hóa, Sữa & Chất tẩy rửa cao",
+        "VIP": "VIP (Khách hàng cao cấp)",
+        "HoReCa": "HoReCa (Nhà hàng / Khách sạn)",
+        "Retail": "Retail (Bán lẻ phổ thông)",
     }
     return {cid: label_text[label] for cid, label in assigned.items()}
 
