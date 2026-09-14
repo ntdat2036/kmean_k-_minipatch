@@ -243,6 +243,15 @@ def test_out_of_sample_generalization():
     assert abs(train_sil - val_sil) < 0.05, f"Chênh lệch Silhouette Train/Val quá lớn: {abs(train_sil - val_sil)}"
 
 
+def test_predict_new_script_execution():
+    """Kiểm tra script predict_new.py thực thi suy luận thành công"""
+    import sys
+    import subprocess
+    result = subprocess.run([sys.executable, "predict_new.py"], capture_output=True, text=True, encoding="utf-8", cwd="d:\\May_Hoc\\Kmeans")
+    assert result.returncode == 0, f"predict_new.py thất bại với lỗi: {result.stderr}"
+    assert "KẾT QUẢ PHÂN KHÚC KHÁCH HÀNG MỚI" in result.stdout
+
+
 
 
 

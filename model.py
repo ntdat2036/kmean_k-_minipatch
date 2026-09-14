@@ -896,6 +896,32 @@ def rand_index(labels_true, labels_pred):
     return float((agreements - n) / total_pairs)
 
 
+def select_best_algorithm(results):
+    """
+    Tự động chọn thuật toán tốt nhất dựa trên chỉ số tổng hợp Min-Max Composite Score:
+    Score = Norm(Silhouette) + Norm(CHI) + Norm(1 - DBI)
+    (Mỗi chỉ số được chuẩn hóa min-max về [0,1] trước khi cộng, trọng số bằng nhau).
+    """
+    names = list(results.keys())
+    sil = np.array([results[k]["silhouette"] for k in names])
+    chi = np.array([results[k]["calinski"] for k in names])
+    dbi = np.array([results[k]["davies"] for k in names])
+
+    def min_max_norm(arr, higher_is_better=True):
+        rng = np.ptp(arr)
+        if rng == 0:
+            return np.ones_like(arr)
+        if higher_is_better:
+            return (arr - np.min(arr)) / rng
+        else:
+            return (np.max(arr) - arr) / rng
+
+    scores = min_max_norm(sil, True) + min_max_norm(chi, True) + min_max_norm(dbi, False)
+    best_idx = int(np.argmax(scores))
+    best_name = names[best_idx]
+    return best_name, {name: float(s) for name, s in zip(names, scores)}
+
+
 # ===========================================================================
 # CLASS: Pipeline
 # ===========================================================================
