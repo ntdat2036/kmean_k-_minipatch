@@ -9,6 +9,8 @@ import sys
 import pickle
 import pandas as pd
 import numpy as np
+# Các import StandardScaler, KMeans, Pipeline bắt buộc khai báo trong không gian tên
+# để pickle.load() có thể giải mã và nạp lại mô hình pipeline đã lưu.
 from model import (
     StandardScaler,
     KMeans,
@@ -66,7 +68,7 @@ def main():
     profiles = load_cluster_profiles()
 
     print("\n" + "=" * 70)
-    print("  KẾT QUẢ PHÂN KHÚC KHÁCH HÀNG MỚI (DYNAMIC CLUSTER MAPPING)")
+    print("  KẾT QUẢ PHÂN KHÚC KHÁCH HÀNG MỚI (ÁNH XẠ NHÃN CỐ ĐỊNH TỪ TẬP TRAIN)")
     print("=" * 70)
     for idx, row in sample_customers.iterrows():
         c_id = int(row['Cluster'])

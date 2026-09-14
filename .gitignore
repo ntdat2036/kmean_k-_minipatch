@@ -1,23 +1,49 @@
-# Python cache
+# =============================================
+# Python Cache & Bytecode
+# =============================================
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyc
 
-# Pytest / Cache
+# =============================================
+# Pytest / Testing Cache
+# =============================================
 .pytest_cache/
 .coverage
 htmlcov/
 
+# =============================================
 # Jupyter Notebook Checkpoints
+# =============================================
 .ipynb_checkpoints/
 
-# Virtual environment
+# =============================================
+# Virtual Environments
+# =============================================
 venv/
 env/
 ENV/
 .venv/
+.env
 
-# Generated Output Artifacts
+# =============================================
+# Generated Runtime Artifacts (re-created by main.py)
+# =============================================
 kmeans_pipeline.pkl
 wholesale_preprocessed.csv
 *.png
+
+# =============================================
+# OS & Editor Artifacts
+# =============================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/

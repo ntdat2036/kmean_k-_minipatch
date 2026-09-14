@@ -268,7 +268,7 @@ class KMeansPlusPlus:
     --------------------------
         n_clusters       : int   — so cum K. Mac dinh = 3.
         max_iter         : int   — so vong lap Lloyd toi da. Mac dinh = 300.
-        n_init           : int   — so lan khoi tao lai. Mac dinh = 5.
+        n_init           : int   — so lan khoi tao lai. Mac dinh = 10.
         random_state     : int   — seed ngau nhien. Mac dinh = None.
         tol              : float — nguong hoi tu. Mac dinh = 1e-4.
         oversample_factor: int   — so ung vien moi buoc init. Mac dinh = 3.
@@ -484,7 +484,7 @@ class MiniBatchKMeans:
                                       khong cai thien full_inertia truoc khi dung som.
                                       Mac dinh = 10. Tuong duong toi da
                                       (max_no_improvement * 5) buoc mini-batch thuc te.
-        n_init             : int   — so lan khoi tao lai. Mac dinh = 3.
+        n_init             : int   — so lan khoi tao lai. Mac dinh = 10.
 
     Thuộc tính sau fit:
     -------------------
@@ -725,9 +725,9 @@ class PCA:
 # METRICS FUNCTIONS
 # ===========================================================================
 
-def silhouette_score(X, labels):
+def silhouette_samples(X, labels):
     """
-    Tính hệ số Silhouette trung bình.
+    Tính hệ số Silhouette CHO TỪNG ĐIỂM DỮ LIỆU.
     s(i) = (b(i) - a(i)) / max(a(i), b(i))
     """
     X = np.asarray(X, dtype=np.float64)
@@ -736,7 +736,7 @@ def silhouette_score(X, labels):
     n_samples = X.shape[0]
 
     if len(unique_labels) < 2 or len(unique_labels) >= n_samples:
-        return np.nan
+        return np.zeros(n_samples, dtype=np.float64)
 
     diff = X[:, np.newaxis, :] - X[np.newaxis, :, :]
     dist_matrix = np.sqrt(np.sum(diff ** 2, axis=2))
@@ -770,7 +770,18 @@ def silhouette_score(X, labels):
         denom = max(a_i, b_i)
         s_scores[i] = (b_i - a_i) / denom if denom > 0 else 0.0
 
-    return float(np.mean(s_scores))
+    return s_scores
+
+
+def silhouette_score(X, labels):
+    """
+    Tính hệ số Silhouette trung bình.
+    s(i) = (b(i) - a(i)) / max(a(i), b(i))
+    """
+    scores = silhouette_samples(X, labels)
+    if len(scores) == 0:
+        return np.nan
+    return float(np.mean(scores))
 
 
 def calinski_harabasz_score(X, labels):
@@ -855,6 +866,27 @@ def davies_bouldin_score(X, labels):
     return float(np.mean(D))
 
 
+def rand_index(labels_true, labels_pred):
+    """
+    Tính chỉ số Rand Index (RI) đánh giá sự tương đồng giữa 2 cách phân cụm.
+    RI = (Số cặp đồng ý) / (Tổng số cặp)
+    Giá trị trong khoảng [0, 1], càng gần 1 càng tương đồng.
+    Không bị ảnh hưởng bởi việc đổi tên/đổi chỉ số nhãn cụm (permutation invariant).
+    """
+    l1 = np.asarray(labels_true)
+    l2 = np.asarray(labels_pred)
+    n = len(l1)
+    if n <= 1:
+        return 1.0
+
+    same_1 = (l1[:, None] == l1[None, :])
+    same_2 = (l2[:, None] == l2[None, :])
+
+    agreements = np.sum(same_1 == same_2)
+    total_pairs = n * (n - 1)
+    return float((agreements - n) / total_pairs)
+
+
 # ===========================================================================
 # CLASS: Pipeline
 # ===========================================================================
@@ -911,15 +943,13 @@ def map_cluster_profiles(df, labels):
     thực tế trung bình (Dynamic Profiling) — không hard-code theo index cụm,
     vì K-Means không đảm bảo thứ tự nhãn cố định qua các lần train.
 
-    LƯU Ý: Hàm này được thiết kế CỐ ĐỊNH cho K=3 với đúng 3 nhãn kinh doanh
-    (VIP, HoReCa, Retail) tương ứng bài toán phân khúc Wholesale Customers
-    của đồ án. Nếu `labels` chứa số cụm khác 3, hàm sẽ gán tất cả cụm còn
-    lại (ngoài VIP và HoReCa) là "Retail" — không tổng quát cho K tùy ý.
+    Chuẩn hóa 2 tiêu chí (Total_Spend & Fresh_Frozen_Ratio) bằng Z-score
+    và ưu tiên gán theo độ tách biệt (z-score) cao nhất trước.
     """
     n_clusters_found = len(np.unique(labels))
     if n_clusters_found != 3:
         print(f"  [Canh bao] map_cluster_profiles duoc thiet ke cho K=3, "
-              f"nhung nhan dau vao co {n_clusters_found} cum. Ket qua gan nhan co the khong chinh xac.")
+              f"nhung nhan dau vao co {n_clusters_found} cum.")
 
     feature_cols = ["Fresh", "Milk", "Grocery", "Frozen", "Detergents_Paper", "Delicassen"]
     df = df.copy()
@@ -929,20 +959,42 @@ def map_cluster_profiles(df, labels):
     means["Total_Spend"] = means[feature_cols].sum(axis=1)
     means["Fresh_Frozen_Ratio"] = (means["Fresh"] + means["Frozen"]) / means["Total_Spend"]
 
+    # Chuẩn hóa 2 tiêu chí về cùng thang đo để so sánh công bằng
+    spend_z = (means["Total_Spend"] - means["Total_Spend"].mean()) / means["Total_Spend"].std()
+    ratio_z = (means["Fresh_Frozen_Ratio"] - means["Fresh_Frozen_Ratio"].mean()) / means["Fresh_Frozen_Ratio"].std()
+
+    # Điểm "độ nổi bật" mỗi tiêu chí — cụm nào vượt trội rõ nhất ở 1 tiêu chí thì được ưu tiên gán trước
+    candidates = pd.DataFrame({
+        "cluster": means.index,
+        "spend_z": spend_z.values,
+        "ratio_z": ratio_z.values
+    })
+
+    assigned = {}
     remaining = list(means.index)
-    profiles = {}
 
-    vip_id = means["Total_Spend"].idxmax()
-    profiles[vip_id] = "Khách hàng VIP / Cao cấp: Tổng chi tiêu vượt trội ở tất cả các ngành hàng"
-    remaining.remove(vip_id)
+    # Gán nhãn nào có "độ tách biệt" (margin) lớn nhất trước, tránh giành giật 1 cụm cho 2 nhãn
+    while remaining:
+        best_label, best_cid, best_margin = None, None, -np.inf
+        for cid in remaining:
+            row = candidates[candidates["cluster"] == cid].iloc[0]
+            for label, score in [("VIP", row["spend_z"]), ("HoReCa", row["ratio_z"])]:
+                if label in assigned.values():
+                    continue
+                margin = score  # có thể thay bằng score - điểm cao thứ nhì cùng tiêu chí để chặt hơn
+                if margin > best_margin:
+                    best_margin, best_label, best_cid = margin, label, cid
+        if best_label is None:
+            best_label = "Retail"
+            best_cid = remaining[0]
+        assigned[best_cid] = best_label
+        remaining.remove(best_cid)
 
-    horeca_id = means.loc[remaining, "Fresh_Frozen_Ratio"].idxmax()
-    profiles[horeca_id] = "Nhà hàng / Khách sạn (HoReCa): Nhu cầu Thực phẩm tươi sống & Đông lạnh cao"
-    remaining.remove(horeca_id)
-
-    for cid in remaining:
-        profiles[cid] = "Bán lẻ phổ thông (Retail): Nhu cầu Tạp hóa, Sữa & Chất tẩy rửa cao"
-
-    return profiles
+    label_text = {
+        "VIP": "Khách hàng VIP / Cao cấp: Tổng chi tiêu vượt trội ở tất cả các ngành hàng",
+        "HoReCa": "Nhà hàng / Khách sạn (HoReCa): Nhu cầu Thực phẩm tươi sống & Đông lạnh cao",
+        "Retail": "Bán lẻ phổ thông (Retail): Nhu cầu Tạp hóa, Sữa & Chất tẩy rửa cao",
+    }
+    return {cid: label_text[label] for cid, label in assigned.items()}
 
 
