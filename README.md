@@ -70,7 +70,43 @@ Kmeans/
 
 ---
 
-## 3. Ý NGHĨA KINH DOANH CỦA 3 CỤM KHÁCH HÀNG ($K = 3$)
+## 3. TRỌNG SỐ HỌC ĐƯỢC CỦA MÔ HÌNH (`model_weights.json`)
+
+> **Lưu ý:** `model_weights.json` là file **tự sinh** — chạy `python weights.py` để tạo lại. File **không** được theo dõi bởi Git.
+
+Khác với neural network, K-Means không có weight kiểu ma trận. "Trọng số" học được của mô hình gồm 3 phần chính:
+
+### 3a. Scaler Weights — Tham số chuẩn hóa (`StandardScaler`)
+
+| Trường | Mô tả |
+| :--- | :--- |
+| `mean_` | Vector trung bình $\mu$ của 9 đặc trưng trên tập huấn luyện |
+| `scale_` | Vector độ lệch chuẩn $\sigma$ — dùng để chuẩn hóa $z = (x - \mu) / \sigma$ |
+
+Cả hai vector được lưu với độ chính xác 6 chữ số thập phân nhằm đảm bảo suy luận (`predict_new.py`) **tái sản sinh 100% cùng không gian đặc trưng** với quá trình huấn luyện.
+
+### 3b. Model Weights — Tâm cụm (`cluster_centers_`)
+
+Mỗi trong 3 thuật toán — **KMeans (Random Init)**, **KMeansPlusPlus**, **MiniBatchKMeans** — xuất ra:
+
+| Trường | Mô tả |
+| :--- | :--- |
+| `cluster_centers_scaled` | Ma trận tâm cụm $(K \times 9)$ trong không gian đã chuẩn hóa Z-score |
+| `cluster_centers_original_scale` | Tâm cụm đã **inverse-transform** về đơn vị tiền tệ gốc (dễ đọc) |
+| `inertia_` | Tổng bình phương khoảng cách điểm → tâm cụm gần nhất (WCSS) |
+| `n_iter_` | Số vòng lặp cho đến hội tụ |
+
+### 3c. D²-Weighting Demo — Minh họa khởi tạo KMeans++ / MiniBatchKMeans
+
+Phần `kmeans_pp_d2_weighting_demo` minh họa cơ chế **D²-weighted sampling** dùng trong bước khởi tạo tâm của KMeans++ và MiniBatchKMeans:
+
+$$P(x_i) = \frac{D(x_i)^2}{\sum_j D(x_j)^2}$$
+
+Điểm càng **xa tâm đã chọn** thì xác suất được chọn làm **tâm kế tiếp càng cao**, giúp trải tâm ban đầu đều hơn và giảm WCSS từ lần lặp đầu tiên.
+
+---
+
+## 4. Ý NGHĨA KINH DOANH CỦA 3 CỤM KHÁCH HÀNG ($K = 3$)
 
 - **Cụm VIP / Cao cấp**: Khách hàng có tổng chi tiêu lớn vượt trội trên toàn bộ 6 ngành hàng. Nhóm mang lại doanh thu chính, cần có chính sách chăm sóc đặc biệt và chiết khấu cao.
 - **Cụm Nhà hàng / Khách sạn (HoReCa)**: Khách hàng có tỷ trọng chi tiêu áp đảo cho `Fresh` (Thực phẩm tươi) và `Frozen` (Thực phẩm đông lạnh). Phù hợp cho các chiến dịch tiếp thị thực phẩm chế biến tươi sống.
