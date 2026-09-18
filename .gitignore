@@ -32,7 +32,7 @@ ENV/
 # Generated Runtime Artifacts (re-created by main.py)
 # =============================================
 kmeans_pipeline.pkl
-wholesale_preprocessed.csv
+model_weights.json
 cluster_profiles.json
 *.png
 
