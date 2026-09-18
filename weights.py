@@ -2,17 +2,11 @@
 """
 weights.py
 ==========
-In ra terminal + lưu ra file JSON phần "trọng số" (weights/parameters) THỰC SỰ
-học được sau khi huấn luyện mô hình K-Means:
-
     - scaler weights : mean_, scale_ của StandardScaler
     - model weights   : cluster_centers_ (tâm cụm) của cả 3 thuật toán
                          KMeans / KMeans++ / MiniBatchKMeans
     - D^2-weighting   : minh họa cơ chế trọng số D^2 dùng trong bước khởi tạo
                          của KMeans++ / MiniBatchKMeans
-
-Hyperparameter (K, n_init, seed, ...) đã được khai báo rõ trong main.py /
-notebook, KHÔNG lặp lại trong file JSON này.
 
 Chạy:  python weights.py
 """
